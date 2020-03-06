@@ -26,34 +26,30 @@ elevation_map = sobel(img_gauss)
 segmentation = watershed(elevation_map, markers)
 segmentation = ndi.binary_fill_holes(segmentation - 1)
 
-labeled_nuclei, _ = ndi.label(segmentation)
-regions = measure.regionprops(labeled_nuclei)
+labeled_nuclei, nr = ndi.label(segmentation)
+coms = ndi.measurements.center_of_mass(labeled_nuclei, labeled_nuclei, range(1, nr+1))
+
+dist = np.ones(labeled_nuclei.shape)
+for i in coms:
+    dist[int(i[0]), int(i[1])] = 0
+dist = ndi.morphology.distance_transform_edt(dist)
+
 r = 45 * pixel_per_micron
 
-fig, ax = plt.subplots()
-perim = np.zeros((labeled_nuclei.shape[0], labeled_nuclei.shape[1]))
-processed_regions = []
-for props in regions:
-    y0, x0 = props.centroid
-    processed_regions.append(props.centroid)
-    for props2 in processed_regions:
-        if props2 == props.centroid:
-            break
-        elif type(props2) is not None:
-            try:
-                x3, y3, x4, y4 = calcIntersections(props.centroid, props2, r, r)
-                if (x3, x4, y3, y4) is not None:
-                    ax.plot(x3, y3, x4, y4, 'o', color='r')
-            except TypeError:
-                pass
-        else:
-            pass
-    rr, cc = draw.circle(y0, x0, r, shape=labeled_nuclei.shape)
-    perim[rr, cc] = props.label
+mask = dist < r
 
-ax.imshow(perim)
+final_labels = np.zeros(labeled_nuclei.shape)
+for i in coms:
+    final_labels[int(i[0]), int(i[1])] = 1
+final_labels, _ = ndi.label(final_labels)
+final_segmentation = watershed(dist, final_labels, mask=mask)
+
+print(final_segmentation)
+# fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
+# ax1.imshow(images[0])
+# ax2.imshow(final_segmentation)
+# ax3.imshow(images[1])
+# ax4.imshow(images[2])
 
 
-#ax.imshow(labeled_nuclei, cmap = "gray")
-plt.show()
-
+# plt.show()
