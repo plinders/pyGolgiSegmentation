@@ -6,14 +6,20 @@ from skimage import measure
 from scipy import ndimage as ndi
 
 
-def importImage(img):
-    with tiff.TiffFile(img) as tif:
-        images = tif.asarray().astype(float)
-        metadata = tif[0].tags
+def importImage(img, ppm=None):
+    if ppm:
+        with tiff.TiffFile(img) as tif:
+            images = tif.asarray().astype(float)
 
-    pixel_per_micron = metadata['x_resolution'].value[0] / metadata['x_resolution'].value[1]
+        return images, ppm
+    else: 
+        with tiff.TiffFile(img) as tif:
+            images = tif.asarray().astype(float)
+            metadata = tif[0].tags
 
-    return images, pixel_per_micron
+        pixel_per_micron = metadata['x_resolution'].value[0] / metadata['x_resolution'].value[1]
+
+        return images, pixel_per_micron
 
 
 def labelNuclei(nucleusImage):
@@ -51,7 +57,7 @@ def distanceSegmentation(labeled_nuclei, nr, radius, pixel_per_micron):
     return final_segmentation
 
 
-def segmentCells(img, nuclearChannel, radius):
-    images, ppm = importImage(img)
+def segmentCells(img, nuclearChannel, radius, ppm=None):
+    images, ppm = importImage(img, ppm)
     nuclei, nr = labelNuclei(images[nuclearChannel])
     return distanceSegmentation(nuclei, nr, radius, ppm)
